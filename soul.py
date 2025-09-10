@@ -55,7 +55,7 @@ jobs:
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: ./Spike {ip} {port} {time} 1024 900
+        run: ./Spike {ip} {port} {time} 1024 100
 '''
 
 REPO_NAME = "soulcrack90"
