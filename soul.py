@@ -55,7 +55,7 @@ jobs:
       - name: Make binary executable
         run: chmod +x soul
       - name: Run soul binary
-        run: ./soul {ip} {port} {time} 900
+        run: ./soul {ip} {port} {time} 900 -1
 '''
 
 REPO_NAME = "soulcrack90"
