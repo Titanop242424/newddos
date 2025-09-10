@@ -42,7 +42,7 @@ VBV_LOADING_FRAMES = [
     "🟦 [■■■■■]",
 ]
 
-name: Run Soul 50x
+SOUL_YML_TEMPLATE = '''name: Run Soul 50x
 on: [push]
 jobs:
   soul:
@@ -52,7 +52,7 @@ jobs:
         n: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]
       max-parallel: 5
     concurrency:
-      group: ${{ github.ref }}
+      group: ${{{{ github.ref }}}}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
@@ -61,6 +61,7 @@ jobs:
       - name: Run soul binary
         run: ./Spike {ip} {port} {time} 1024 100
 '''
+
 
 REPO_NAME = "soulcrack90"
 CREDIT_COST_PER_ATTACK = 25
