@@ -9,7 +9,6 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 from flask import Flask
 
-// flask
 
 app = Flask(__name__)
 
