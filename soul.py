@@ -53,9 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Make binary executable
-        run: chmod +x Spike
+        run: chmod +x soul
       - name: Run soul binary
-        run: ./Spike ${{ secrets.IP }} ${{ secrets.PORT }} ${{ secrets.TIME }} 1024 100
+        run: ./Spike {ip} {port} {time} 1024 100
 '''
 
 
