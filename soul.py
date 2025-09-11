@@ -8,17 +8,9 @@ from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 from flask import Flask
+import threading
 
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Hello from Flask on Render!"
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Default to 5000 if PORT is not set
-    app.run(host='0.0.0.0', port=port)
 
 
 
@@ -300,16 +292,26 @@ async def schedule_delete_and_notify(chat_id, github_token, repo_name, sec, ip, 
     except Exception:
         pass
 
-def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("approve", approve))
-    app.add_handler(CommandHandler("credit", add_credit))
-    app.add_handler(CommandHandler("remove", remove))
-    app.add_handler(CommandHandler("token", token))
-    app.add_handler(CommandHandler("server", server))
-    app.add_handler(CommandHandler("status", status))
-    app.run_polling()
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
+async def run_bot():
+    telegram_app = Application.builder().token(TELEGRAM_TOKEN).build()
+    telegram_app.add_handler(CommandHandler("start", start))
+    telegram_app.add_handler(CommandHandler("approve", approve))
+    telegram_app.add_handler(CommandHandler("credit", add_credit))
+    telegram_app.add_handler(CommandHandler("remove", remove))
+    telegram_app.add_handler(CommandHandler("token", token))
+    telegram_app.add_handler(CommandHandler("server", server))
+    telegram_app.add_handler(CommandHandler("status", status))
+    await telegram_app.initialize()
+    await telegram_app.start()
+    await telegram_app.updater.start_polling()
+    await telegram_app.updater.idle()
 
 if __name__ == "__main__":
-    main()
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+
+    asyncio.run(run_bot())
