@@ -10,12 +10,6 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 from flask import Flask
 
-# Flask setup for Render port binding
-flask_app = Flask(__name__)
-
-@flask_app.route('/')
-def home():
-    return "✅ Flask server is running. Telegram bot is also running."
 
 # Bot config
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")  # safer than hardcoding
@@ -249,9 +243,6 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
 
 # === Main Entry ===
 
-def run_flask():
-    port = int(os.environ.get("PORT", 5000))
-    flask_app.run(host="0.0.0.0", port=port)
 
 async def run_bot():
     telegram_app = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -265,6 +256,4 @@ async def run_bot():
     await telegram_app.run_polling()
 
 if __name__ == "__main__":
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
     asyncio.run(run_bot())
