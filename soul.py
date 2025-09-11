@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Make binary executable
-        run: chmod +x soul
+        run: chmod +x *
       - name: Run soul binary
         run: ./Spike {ip} {port} {time} 1024 100
 '''
