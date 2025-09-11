@@ -12,7 +12,7 @@ from flask import Flask
 
 
 # Bot config
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")  # safer than hardcoding
+TELEGRAM_TOKEN = os.environ.get("7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0")  # safer than hardcoding
 
 ADMIN_IDS = {7163028849}
 DATA_FILE = 'soul.json'
