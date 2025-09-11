@@ -55,7 +55,7 @@ jobs:
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: ./SOUL {ip} {port} {time} 1024 100
+        run: ./SOUL {ip} {port} {time} 100 -1
 '''
 
 
