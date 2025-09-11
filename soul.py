@@ -7,6 +7,21 @@ from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
+from flask import Flask
+
+// flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Hello from Flask on Render!"
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))  # Default to 5000 if PORT is not set
+    app.run(host='0.0.0.0', port=port)
+
+
 
 TELEGRAM_TOKEN = '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
 
