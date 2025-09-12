@@ -294,7 +294,7 @@ async def schedule_delete_and_notify(chat_id, github_token, repo_name, sec, ip, 
     except Exception:
         pass
 
-def main():
+def run_telegram_bot():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve", approve))
