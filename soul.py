@@ -7,6 +7,15 @@ from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
+from flask import Flask
+import threading
+
+
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def index():
+    return "Bot is running!"
 
 TELEGRAM_TOKEN = '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
 
@@ -295,6 +304,11 @@ def main():
     app.add_handler(CommandHandler("server", server))
     app.add_handler(CommandHandler("status", status))
     app.run_polling()
+
+def main():
+    threading.Thread(target=run_telegram_bot).start()
+    port = int(os.environ.get('PORT', 5000))
+    app_flask.run(host='0.0.0.0', port=port)
 
 if __name__ == "__main__":
     main()
