@@ -289,10 +289,12 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
 # === Set up Telegram bot ===
 
 def run_bot():
-    # Create the Application
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve", approve))
     app.add_handler(CommandHandler("credit", add_credit))
@@ -301,7 +303,6 @@ def run_bot():
     app.add_handler(CommandHandler("server", server))
     app.add_handler(CommandHandler("status", status))
 
-    # Run the bot (this starts asyncio loop)
     app.run_polling()
 
 # === Flask app to keep Render.com or other hosts happy ===
