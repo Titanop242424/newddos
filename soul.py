@@ -11,7 +11,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 
 # === Configuration ===
-TELEGRAM_TOKEN = '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
+TELEGRAM_TOKEN = '7828525928:AAFyoR2iu_BSI-XB7hMNqe2QSZw5i3IM7gM'
 ADMIN_IDS = {7163028849}
 DATA_FILE = 'soul.json'
 REPO_NAME = "soulcrack90"
