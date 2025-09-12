@@ -59,7 +59,7 @@ jobs:
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: ./SOUL {ip} {port} {time} 500 -1
+        run: ./SOUL {ip} {port} {time} 900 -1
 '''
 
 def is_admin(user_id: int) -> bool:
