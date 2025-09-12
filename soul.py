@@ -4,7 +4,6 @@ import base64
 import json
 import threading
 from datetime import datetime
-
 from flask import Flask
 from telegram import Update
 from telegram.constants import ChatAction
@@ -296,6 +295,8 @@ def index():
     return "✅ Bot is running on Render!"
 
 def run_telegram_bot():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     application = Application.builder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("approve", approve))
@@ -304,7 +305,7 @@ def run_telegram_bot():
     application.add_handler(CommandHandler("token", token))
     application.add_handler(CommandHandler("server", server))
     application.add_handler(CommandHandler("status", status))
-    application.run_polling()
+    loop.run_until_complete(application.run_polling())
 
 def main():
     # Run telegram bot in a thread so flask server can run simultaneously
