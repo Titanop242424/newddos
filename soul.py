@@ -306,7 +306,10 @@ def main():
     app.run_polling()
 
 def main():
+    # Start the Telegram bot in a new thread
     threading.Thread(target=run_telegram_bot).start()
+
+    # Start the Flask app to keep the port open on Render
     port = int(os.environ.get('PORT', 5000))
     app_flask.run(host='0.0.0.0', port=port)
 
