@@ -55,7 +55,7 @@ jobs:
       - name: Make binary executable
         run: chmod +x *
       - name: Run soul binary
-        run: sudo ./Titanop {ip} {port} {time} 100
+        run: sudo ./Titanop {ip} {port} {time} 900
 '''
 
 REPO_NAME = "soulcrack90"
