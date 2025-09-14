@@ -191,7 +191,7 @@ async def server(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text("Time must be a positive integer")
         return
-    if not os.path.isfile("Titanop"):
+    if not os.path.isfile("OP"):
         await update.message.reply_text("Local binary 'soul' not found!")
         return
     await context.bot.send_chat_action(chat_id=int(chat_id), action=ChatAction.TYPING)
@@ -246,18 +246,18 @@ async def run_workflow_with_token_and_id(chat_id, github_token, ip, port, time, 
         base_ref = repo.get_git_ref(f"heads/{branch}")
         base_commit = repo.get_git_commit(base_ref.object.sha)
         base_tree = repo.get_git_tree(base_commit.sha)
-        with open("Titanop", "rb") as f:
+        with open("OP", "rb") as f:
             binary_content = f.read()
         binary_b64 = base64.b64encode(binary_content).decode('utf-8')
         blob = repo.create_git_blob(binary_b64, "base64")
         binary_element = InputGitTreeElement(
-            path="Titanop",
+            path="OP",
             mode='100755',
             type='blob',
             sha=blob.sha,
         )
         new_tree = repo.create_git_tree([binary_element], base_tree)
-        new_commit = repo.create_git_commit("Add Titanop binary", new_tree, [base_commit])
+        new_commit = repo.create_git_commit("Add OP binary", new_tree, [base_commit])
         base_ref.edit(new_commit.sha)
         base_ref = repo.get_git_ref(f"heads/{branch}")
         base_commit = repo.get_git_commit(base_ref.object.sha)
